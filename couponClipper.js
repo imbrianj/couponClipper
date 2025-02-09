@@ -1,6 +1,13 @@
+/**
+ * @fileoverview Script to automate coupon clipping on the Albertsons website using Playwright.
+ * It logs in with provided credentials and clicks available coupon buttons.
+ *
+ * Usage: node couponClipper.js --phoneNumber <phoneNumber> --password <password>
+ */
+
 const { chromium } = require('playwright');
 
-// Manually parse command-line arguments.
+// Parse command-line arguments.
 let phoneNumber, password;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
@@ -19,7 +26,7 @@ if (!phoneNumber || !password) {
 }
 
 (async () => {
-  // Launch the browser (headless: false for debugging).
+  // Launch the browser (set headless: false for debugging).
   const browser = await chromium.launch({ headless: true });
 
   // Create a new browser context with a realistic user agent, viewport, and locale.
@@ -37,19 +44,39 @@ if (!phoneNumber || !password) {
 
   const page = await context.newPage();
 
-  // Returns a random delay (in ms) between min and max.
+  /**
+   * Returns a random delay between the specified minimum and maximum values.
+   *
+   * @param {number} [min=200] - Minimum delay in milliseconds.
+   * @param {number} [max=800] - Maximum delay in milliseconds.
+   * @returns {number} A random delay in milliseconds.
+   */
   function randomDelay(min = 200, max = 800) {
     return Math.random() * (max - min) + min;
   }
 
-  // Wait for a random period between min and max milliseconds.
+  /**
+   * Waits for a random period between the specified minimum and maximum milliseconds.
+   *
+   * @param {number} [min=200] - Minimum delay in milliseconds.
+   * @param {number} [max=800] - Maximum delay in milliseconds.
+   * @returns {Promise<void>} A promise that resolves after the delay.
+   */
   async function waitRandom(min = 200, max = 800) {
     const delay = randomDelay(min, max);
     console.log(`Waiting for ${Math.round(delay)} ms`);
     await page.waitForTimeout(delay);
   }
 
-  // Type text letter-by-letter into a field specified by selector.
+  /**
+   * Types text letter-by-letter into an input field specified by a selector.
+   *
+   * @param {string} selector - The CSS selector of the input field.
+   * @param {string} text - The text to type.
+   * @param {number} [minDelay=200] - Minimum delay between keystrokes in milliseconds.
+   * @param {number} [maxDelay=1200] - Maximum delay between keystrokes in milliseconds.
+   * @returns {Promise<void>} A promise that resolves when typing is complete.
+   */
   async function typeText(selector, text, minDelay = 200, maxDelay = 1200) {
     console.log('Entering string of length: ' + text.length);
     // Focus the input field.
@@ -60,7 +87,7 @@ if (!phoneNumber || !password) {
     }
   }
 
-  // Navigate to the coupons page. This may redirect you to the sign-in page.
+  // Navigate to the coupons page. This may redirect to the sign-in page.
   await page.goto('https://www.albertsons.com/foru/coupons-deals.html');
 
   // Attempt to detect the login page by waiting for the phone number field.
@@ -78,7 +105,7 @@ if (!phoneNumber || !password) {
     // Type the phone number letter-by-letter.
     await typeText('#enterUsername', phoneNumber);
     await waitRandom();
-    
+
     // Wait for and click the button to continue after entering the phone number.
     await page.waitForSelector('.auth-styles__content button.btn-secondary');
     await waitRandom();
@@ -86,11 +113,11 @@ if (!phoneNumber || !password) {
 
     // Wait for the password field to appear.
     await page.waitForSelector('#password', { timeout: 10000 });
-    
+
     // Type the password letter-by-letter.
     await typeText('#password', password);
     await waitRandom();
-    
+
     // Wait for and click the login button.
     await page.waitForSelector('.btn-primary');
     await waitRandom();
@@ -105,20 +132,32 @@ if (!phoneNumber || !password) {
 
   // --- Coupon Clicking Process ---
 
-  // Utility: Wait for a specified number of milliseconds.
+  /**
+   * Returns a promise that resolves after a specified number of milliseconds.
+   *
+   * @param {number} ms - The number of milliseconds to wait.
+   * @returns {Promise<void>} A promise that resolves after the delay.
+   */
   function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Wait until at least one new coupon button is available.
-  // Replace '.coupon-deal-button' with the actual selector for coupon buttons.
+  /**
+   * Waits until at least one new coupon button is available on the page.
+   *
+   * @returns {Promise<void>} A promise that resolves when a new coupon button is detected.
+   */
   async function waitForNewButtons() {
     await page.waitForFunction(() => {
       return document.querySelectorAll('.coupon-deal-button').length > 0;
     }, { timeout: 0 });
   }
 
-  // Click all available coupon buttons one by one, with random delays before clicking.
+  /**
+   * Clicks all available coupon buttons one by one with random delays before each click.
+   *
+   * @returns {Promise<void>} A promise that resolves after all coupon buttons have been clicked.
+   */
   async function clickAllCouponButtons() {
     const buttons = await page.$$('.coupon-deal-button');
     console.log(`Found ${buttons.length} coupon button(s) to click.`);
@@ -134,7 +173,11 @@ if (!phoneNumber || !password) {
     }
   }
 
-  // Optionally handle a modal if it appears (adjust selectors if necessary).
+  /**
+   * Handles a potential modal dialog by attempting to close it if it appears.
+   *
+   * @returns {Promise<void>} A promise that resolves when the modal is handled.
+   */
   async function handlePotentialModal() {
     const modal = await page.$('.login-modal');
     if (modal) {
@@ -147,7 +190,11 @@ if (!phoneNumber || !password) {
     }
   }
 
-  // Main recursive process: click coupon buttons, then load more if available.
+  /**
+   * Recursively processes coupon buttons by clicking them and loading more if available.
+   *
+   * @returns {Promise<void>} A promise that resolves when no more coupon buttons can be processed.
+   */
   async function processButtons() {
     await handlePotentialModal();
     await clickAllCouponButtons();
